@@ -1,0 +1,42 @@
+ARG GO_VER=1.25
+ARG ALPINE_VER=3.22
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
+
+# first build stage
+# by default uses alpine-based image
+# golang 1.25
+# alpine 3.22
+# arch linux/amd64
+FROM --platform=$TARGETPLATFORM golang:${GO_VER}-alpine${ALPINE_VER} AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+# copy all source code for build
+WORKDIR /src
+COPY . .
+
+RUN apk add --no-cache make bash && \
+    make sg-server os=${TARGETOS} arch=${TARGETARCH}
+
+
+# arch linux/amd64
+FROM alpine:${ALPINE_VER}
+
+
+# create user other than root and install updated
+RUN addgroup -g 101 app && \
+    adduser  -H -u 101 -G app -s /bin/sh -D app && \
+    apk --no-cache add ca-certificates
+
+# place all necessary executables and other files into /app directory
+WORKDIR /app/
+RUN mkdir -p /app/bin
+COPY --from=builder --chown=app:app /src/bin/ /app/bin/
+
+# run container as new non-root user
+USER app
+
+CMD ["/app/bin/sg-server"]
