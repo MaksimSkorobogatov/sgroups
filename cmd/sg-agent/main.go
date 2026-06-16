@@ -58,7 +58,7 @@ func main() { //nolint:gocyclo
 		conf.WithDefValue(config.DnsWriteDuration, "5s"),
 		conf.WithDefValue(config.DnsReadDuration, "5s"),
 		//telemetry group
-		conf.WithDefValue(config.TelemetryEndpoint, "127.0.0.1:5000"),
+		conf.WithDefValue(config.TelemetryAddr, "127.0.0.1:5000"),
 		conf.WithDefValue(config.MetricsEnable, true),
 		conf.WithDefValue(config.HealthcheckEnable, true),
 		conf.WithDefValue(config.UserAgent, ""),
@@ -66,6 +66,16 @@ func main() { //nolint:gocyclo
 		conf.WithDefValue(config.NftablesCollectorMinFrequency, "10s"),
 		//authn group
 		conf.WithDefValue(config.SGroupsAuthnType, config.AuthnTypeNONE),
+		//api
+		conf.WithDefValue(config.ApiAddress, "tcp://127.0.0.1:5000"),
+		conf.WithDefValue(config.ApiAuthnType, config.AuthnTypeNONE),
+		// ss
+		conf.WithDefValue(config.SocketScanStrategy, config.ScanStrategyCached),
+		conf.WithDefValue(config.SocketScanCacheTTL, "2s"),
+		// nft
+		conf.WithDefValue(config.NftScanSyncInterval, "1s"),
+		conf.WithDefValue(config.NftScanStrategy, config.ScanStrategyCached),
+		conf.WithDefValue(config.NftScanCacheTTL, "2s"),
 	)
 	if err != nil {
 		logger.Fatal(ctx, err)
@@ -78,18 +88,35 @@ func main() { //nolint:gocyclo
 		logger.Fatal(ctx, errors.WithMessage(err, "setup metrics"))
 	}
 
-	err = WhenSetupTelemtryServer(ctx, func(srv *server.APIServer) error {
-		addr := config.TelemetryEndpoint.MustValue(ctx)
-		ep, e := pkgNet.ParseEndpoint(addr)
+	err = WhenSetupApiServer(ctx, func(srv *server.APIServer) error {
+		ep, e := pkgNet.ParseEndpoint(config.ApiAddress.MustValue(ctx))
 		if e != nil {
-			return errors.WithMessagef(e, "parse telemetry endpoint (%s): %v", addr, e)
+			return errors.WithMessagef(e, "parse API endpoint: %v", e)
 		}
-		go func() { //start telemetry endpoint
+		go func() { //start API endpoint
 			if e1 := srv.Run(ctx, ep); e1 != nil {
-				logger.Fatalf(ctx, "telemetry server is failed: %v", e1)
+				logger.Fatalf(ctx, "API server is failed: %v", e1)
 			}
 		}()
 		return nil
+	})
+	if err != nil {
+		logger.Fatal(ctx, errors.WithMessage(err, "setup API server"))
+	}
+
+	err = IfUseTelemetryAddr(ctx, func(addr string) error {
+		return WhenSetupTelemtryServer(ctx, func(srv *server.APIServer) error {
+			ep, e := pkgNet.ParseEndpoint(addr)
+			if e != nil {
+				return errors.WithMessagef(e, "parse telemetry endpoint (%s): %v", addr, e)
+			}
+			go func() { //start telemetry endpoint
+				if e1 := srv.Run(ctx, ep); e1 != nil {
+					logger.Fatalf(ctx, "telemetry server is failed: %v", e1)
+				}
+			}()
+			return nil
+		})
 	})
 	if err != nil {
 		logger.Fatal(ctx, errors.WithMessage(err, "setup telemetry server"))

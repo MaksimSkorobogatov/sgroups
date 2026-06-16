@@ -1,4 +1,4 @@
-package sgserver
+package app
 
 import (
 	"github.com/PRO-Robotech/sgroups/internal/shared/app"

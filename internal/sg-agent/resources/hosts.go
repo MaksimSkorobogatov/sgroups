@@ -17,6 +17,7 @@ import (
 	sgv1 "github.com/PRO-Robotech/sgroups-proto/pkg/api/sgroups/v1"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	hinfo "github.com/shirou/gopsutil/v4/host"
 	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
@@ -202,17 +203,36 @@ func (h *hostInfo) load(ctx context.Context) error {
 }
 
 func (h *hostIPs) sync(ctx context.Context, sgClients sg.Clients, uid domain.UUID, ncnf host.NetConf) error {
+	var (
+		host      domain.ResourceIdentifier
+		endpoints domain.HostEndpoints
+		epPb      *sgv1.Host_Spec_Endpoints
+	)
 	client, err := sgClients.Hosts()
 	if err != nil {
 		return err
 	}
-	var host domain.ResourceIdentifier
+
 	if host, err = conf.GetHostID(ctx); err != nil {
 		return err
 	}
 
 	if err = h.load(ncnf); err != nil {
 		return err
+	}
+
+	if endpoints, err = conf.GetEndpoints(ctx); err != nil {
+		return err
+	}
+	if len(endpoints.Ports) > 0 {
+		epPb = &sgv1.Host_Spec_Endpoints{
+			Ports: lo.Map(endpoints.Ports, func(port domain.NamedPort, _ int) *sgv1.Host_Spec_Endpoints_Port {
+				return &sgv1.Host_Spec_Endpoints_Port{
+					Name: port.Name,
+					Port: uint32(port.Port),
+				}
+			}),
+		}
 	}
 	_, err = client.UpdIPs(ctx, &sgv1.HostReq_UpdIPs{
 		Hosts: []*sgv1.HostReq_UpdIPs_Host{
@@ -231,6 +251,7 @@ func (h *hostIPs) sync(ctx context.Context, sgClients sg.Clients, uid domain.UUI
 							return ip.String()
 						}),
 					},
+					Endpoints: epPb,
 				},
 			},
 		},

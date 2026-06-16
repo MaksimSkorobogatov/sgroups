@@ -1,0 +1,39 @@
+package host
+
+import (
+	"context"
+
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/repository"
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/repository/scopes"
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service"
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/host/dto"
+	domain "github.com/PRO-Robotech/sgroups/internal/shared/domains/sgroups"
+	"github.com/PRO-Robotech/sgroups/internal/shared/transport"
+
+	sgv1 "github.com/PRO-Robotech/sgroups-proto/pkg/api/sgroups/v1"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+// Delete -
+func (srv *hostService) Delete(ctx context.Context, req *sgv1.HostReq_Delete) (resp *emptypb.Empty, err error) {
+	defer func() {
+		err = transport.CorrectError(err, service.WithAllErr[:]...)
+	}()
+	resp = new(emptypb.Empty)
+
+	var hosts domain.Hosts
+	if err = dto.Proto2Domain(dto.DTO(req, &hosts)); err != nil {
+		return resp, err
+	}
+
+	if err = transport.Validate(hosts.GetMetas()...); err != nil {
+		return resp, err
+	}
+
+	err = srv.rep.Do(ctx, func(wr repository.WriterFace) (e error) {
+		_, e = wr.SyncHost(ctx, scopes.ScopeByHosts{Hosts: hosts}, repository.DeleteOp)
+		return e
+	})
+
+	return resp, err
+}

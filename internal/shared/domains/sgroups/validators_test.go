@@ -3,6 +3,7 @@ package sgroups
 import (
 	"net"
 	"net/netip"
+	"strings"
 	"testing"
 
 	"github.com/H-BF/corlib/pkg/dict"
@@ -740,6 +741,43 @@ func Test_DefRulePriority_CoversAllRuleTypes(t *testing.T) {
 		t.Run(string(rt), func(t *testing.T) {
 			_, ok := DefRulePriority[rt]
 			require.True(t, ok, "RuleType %q has no entry in DefRulePriority", rt)
+		})
+	}
+}
+
+func Test_DisplayName_Validate(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      DisplayName
+		wantErr bool
+	}{
+		{"empty (optional)", "", false},
+		{"single char", "a", false},
+		{"single digit", "5", false},
+		{"hyphenated", "foo-bar", false},
+		{"with digits", "5post-db", false},
+		{"63 chars max length", DisplayName(strings.Repeat("a", 63)), false},
+
+		{"uppercase rejected", "Foo", true},
+		{"underscore rejected", "foo_bar", true},
+		{"space rejected", "foo bar", true},
+		{"leading hyphen", "-foo", true},
+		{"trailing hyphen", "foo-", true},
+		{"only hyphen", "-", true},
+		{"64 chars too long", DisplayName(strings.Repeat("a", 64)), true},
+		{"non-ascii", "föö", true},
+		{"dot", "foo.bar", true},
+		{"slash", "ns/foo", true},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.in.Validate()
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

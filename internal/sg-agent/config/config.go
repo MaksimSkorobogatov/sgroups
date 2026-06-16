@@ -3,16 +3,19 @@ package config
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	domain "github.com/PRO-Robotech/sgroups/internal/shared/domains/sgroups"
 
 	"github.com/H-BF/corlib/logger"
+	pkgNet "github.com/H-BF/corlib/pkg/net"
 	conf "github.com/H-BF/corlib/pkg/plain-config"
+	"github.com/pkg/errors"
 )
 
 /*// config-sample.yaml
-hostinfo:c "git
+hostinfo:
   name: host-name-string #mandatory; no-default
   namespace: host-namespace-string #mandatory; no-default
 exit-on-success: true|false - do exit when we succeeded to apply netfilter config; def-val=false
@@ -68,9 +71,9 @@ dns:
 
 extapi:
   svc:
-    def-daial-duration: 10s
+    def-dial-duration: 10s
     sgroups:
-      dial-duration: 3s #override default-connect-tmo
+      dial-duration: 3s #override def-dial-duration
       address: tcp://127.0.0.1:9006
       sync-status:
         interval: 20s #mandatory
@@ -88,16 +91,39 @@ extapi:
             ca-files: ["file1.pem", "file2.pem", ...] # is not present by default
 
 telemetry:
+  address: 127.0.0.1:5000 #mandatory; default= tcp://127.0.0.1:5000
   useragent: "string"
   nft-collector:
     min-frequency: 1s
-  endpoint: 127.0.0.1:5000
   metrics:
     enable: true
   healthcheck:
     enable: true
   profile:
     enable: true
+
+ss: #socket scan section
+  strategy: # oneof<cached|non-cached> #default=cached
+  cache: # optional; used when strategy=cached
+    ttl: 2s #default=2s
+
+nft: #nftables section
+  scan: #nftables scan section
+    sync-interval: 1s #default=1s; used in 'watch' usecase to do periodic resync with nftables state
+    strategy: # oneof<cached|non-cached> #default=cached
+    cache:
+      ttl: 2s #default=2s
+
+api:
+  address: tcp://127.0.0.1:5000 #mandatory; default= tcp://127.0.0.1:5000
+  authn:
+    type: oneof<none|tls> # 'none' is by default
+    tls:
+      key-file: "key-file.pem"
+      cert-file: "cert-file.pem"
+      client:
+        verify: oneof<skip|certs-required|verify> #optional; default='skip'
+        ca-files: ["file1.pem", "file2.pem", "file3.pem", ...] #CA files when client/verify points to 'verify'
 */
 
 // hostinfo section
@@ -159,7 +185,7 @@ const (
 // extapi/svc section
 const (
 	// ServicesDefDialDuration default dial duraton to conect a service [optional]
-	ServicesDefDialDuration conf.ValueT[time.Duration] = "extapi/svc/def-daial-duration"
+	ServicesDefDialDuration conf.ValueT[time.Duration] = "extapi/svc/def-dial-duration"
 	//SGroupsAddress service address [mandatory]
 	SGroupsAddress conf.ValueT[string] = "extapi/svc/sgroups/address"
 	//SGroupsDialDuration sgroups service dial duration [optional]
@@ -192,8 +218,8 @@ const (
 
 // telemetry section
 const (
-	// TelemetryEndpoint server endpoint
-	TelemetryEndpoint conf.ValueT[string] = "telemetry/endpoint"
+	// TelemetryAddr server addr
+	TelemetryAddr conf.ValueT[string] = "telemetry/address"
 	// MetricsEnable enable api metrics
 	MetricsEnable conf.ValueT[bool] = "telemetry/metrics/enable"
 	// HealthcheckEnable enables|disables health check handler
@@ -204,6 +230,40 @@ const (
 	ProfileEnable conf.ValueT[bool] = "telemetry/profile/enable"
 	// NftablesCollectorMinFrequency states how often to update cache with nft metrics
 	NftablesCollectorMinFrequency conf.ValueT[time.Duration] = "telemetry/nft-collector/min-frequency"
+)
+
+// ss section
+const (
+	// SocketScanStrategy oneof<cached|non-cached> #default=cached
+	SocketScanStrategy ScanStrategySelector = "ss/strategy"
+	// SocketScanCacheTTL cache TTL for socket scan results; default=2s
+	SocketScanCacheTTL conf.ValueT[time.Duration] = "ss/cache/ttl"
+)
+
+// nft section
+const (
+	// NftScanSyncInterval interval(duration) to sync nftables state
+	NftScanSyncInterval conf.ValueT[time.Duration] = "nft/scan/sync-interval"
+	// NftScanStrategy oneof<cached|non-cached> #default=cached
+	NftScanStrategy ScanStrategySelector = "nft/scan/strategy"
+	// NftScanCacheTTL cache TTL for nft scan results; default=2s
+	NftScanCacheTTL conf.ValueT[time.Duration] = "nft/scan/cache/ttl"
+)
+
+// agent api section
+const (
+	// ApiAddress -
+	ApiAddress conf.ValueT[string] = "api/address"
+	// ApiAuthnType selects authn type <none|tls>
+	ApiAuthnType conf.AuthnTypeSelector = "api/authn/type"
+	// ApiTLSKeyFile server private key PEM encoded file
+	ApiTLSKeyFile conf.TLSprivKeyFile = "api/authn/tls/key-file"
+	// ApiTLSCertFile server cert PEM encoded file
+	ApiTLSCertFile conf.TLScertFile = "api/authn/tls/cert-file"
+	// ApiTLSClientVerifyStrategy verify client and certs
+	ApiTLSClientVerifyStrategy conf.TLSclientVerifyStrategy = "api/authn/tls/client/verify"
+	// ApiTLSClientCAfiles client cert authority PEM files
+	ApiTLSClientCAfiles conf.TLScaFiles = "api/authn/tls/client/ca-files"
 )
 
 // ErrNotFound - alias for config.ErrNotFound
@@ -237,4 +297,78 @@ func GetHostID(ctx context.Context) (ret domain.ResourceIdentifier, err error) {
 		Name:      domain.ResourceName(name),
 		Namespace: domain.ResourceNamespace(namespace),
 	}, nil
+}
+
+// GetEndpoints get host endpoints from config
+func GetEndpoints(ctx context.Context) (ret domain.HostEndpoints, err error) {
+	var (
+		metricAddr    string
+		apiAddr       string
+		metricPortNum domain.PortNumber
+		apiPortNum    domain.PortNumber
+	)
+	if metricAddr, err = TelemetryAddr.Value(ctx); err != nil {
+		return ret, err
+	}
+	if metricPortNum, err = portFromAddr(metricAddr); err != nil {
+		return ret, err
+	}
+	if apiAddr, err = ApiAddress.Value(ctx); err != nil {
+		return ret, err
+	}
+	if apiPortNum, err = portFromAddr(apiAddr); err != nil {
+		return ret, err
+	}
+	ret.Ports = []domain.NamedPort{
+		{
+			Name: domain.AgentTelemetryEndpointName,
+			Port: metricPortNum,
+		},
+		{
+			Name: domain.AgentApiEndpointName,
+			Port: apiPortNum,
+		},
+	}
+
+	return ret, nil
+}
+
+// AddrsEqual compares two endpoints addresses by their ports and network types
+func AddrsEqual(a1, a2 string) (bool, error) {
+	port1, err := portFromAddr(a1)
+	if err != nil {
+		return false, err
+	}
+	port2, err := portFromAddr(a2)
+	if err != nil {
+		return false, err
+	}
+	if port1 != port2 {
+		return false, nil
+	}
+	ep1, _ := pkgNet.ParseEndpoint(a1)
+	ep2, _ := pkgNet.ParseEndpoint(a2)
+	return ep1.Network() == ep2.Network(), nil
+}
+
+func portFromAddr(addr string) (ret domain.PortNumber, err error) {
+	var (
+		ep      *pkgNet.Endpoint
+		port    string
+		portNum int
+	)
+	ep, err = pkgNet.ParseEndpoint(addr)
+	if err != nil {
+		return ret, errors.WithMessagef(err, "parse telemetry endpoint (%s): %v", addr, err)
+	}
+	_, port, err = ep.HostPort()
+	if err != nil {
+		return ret, errors.WithMessagef(err, "get telemetry endpoint port (%s): %v", addr, err)
+	}
+	portNum, err = strconv.Atoi(port)
+	if err != nil {
+		return ret, errors.WithMessagef(err, "convert telemetry endpoint port (%s): %v", port, err)
+	}
+
+	return domain.PortNumber(portNum), nil //nolint:gosec
 }

@@ -1,5 +1,5 @@
 //nolint:revive
-package sgserver
+package app
 
 import (
 	"time"
@@ -38,6 +38,21 @@ authn:
     client:
       verify: <skip|certs-required|verify> # 'skip' is by default
       ca-files: ["file1.pem", "file2.pem", "file3.pem", ...]
+
+extapi:
+  def-dial-duration: 10s #optional; default=10s
+  agents:
+    dial-duration: 3s #override def-dial-duration
+    authn:
+      type: "none|tls" #optional; default="none"
+      tls:
+        key-file: "key-file.pem"
+        cert-file: "cert-file.pem"
+        server:
+          verify: <true|false> # false is by default
+          name: "server-name" # is not present by default
+          ca-files: ["file1.pem", "file2.pem", ...] # is not present by default
+
 */
 
 // logger section
@@ -97,4 +112,24 @@ const (
 
 	// TLSclientVerifyStrategy verify client and certs a.k.a MTLS; 'skip' is by default
 	TLSclientVerifyStrategy config.TLSclientVerifyStrategy = "authn/tls/client/verify"
+)
+
+// extapi section
+const (
+	// ExtapiDefDialDuration -
+	ExtapiDefDialDuration config.ValueT[time.Duration] = "extapi/def-dial-duration"
+	// ExtapiAgentDialDuration -
+	ExtapiAgentDialDuration config.ValueT[time.Duration] = "extapi/agents/dial-duration"
+	// ExtapiAgentAuthnType -
+	ExtapiAgentAuthnType config.AuthnTypeSelector = "extapi/agents/authn/type"
+	// ExtapiAgentTLSCertFile -
+	ExtapiAgentTLSCertFile config.TLScertFile = "extapi/agents/authn/tls/cert-file"
+	// ExtapiAgentTLSKeyFile -
+	ExtapiAgentTLSKeyFile config.TLSprivKeyFile = "extapi/agents/authn/tls/key-file"
+	// ExtapiAgentTLSServerVerify -
+	ExtapiAgentTLSServerVerify config.ValueT[bool] = "extapi/agents/authn/tls/server/verify"
+	// ExtapiAgentTLSServerName -
+	ExtapiAgentTLSServerName config.TLSverifysServerName = "extapi/agents/authn/tls/server/name"
+	// ExtapiAgentTLSServerCAfiles -
+	ExtapiAgentTLSServerCAfiles config.TLScaFiles = "extapi/agents/authn/tls/server/ca-files"
 )
