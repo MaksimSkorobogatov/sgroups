@@ -16,13 +16,15 @@ import (
 const JsonCodecName = "json"
 
 type (
-	closableClient interface {
-		Init(conn grpc.ClientConnInterface) error
-		Close() error
-	}
+
 	// Clients SecGrpups server clients
 	Clients struct {
 		apiClients map[reflect.Type]closableClient
+	}
+
+	closableClient interface {
+		Init(conn grpc.ClientConnInterface) error
+		Close() error
 	}
 )
 

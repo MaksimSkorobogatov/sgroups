@@ -1,4 +1,4 @@
-package sgserver
+package app
 
 import (
 	"flag"

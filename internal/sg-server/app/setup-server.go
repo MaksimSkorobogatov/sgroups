@@ -1,20 +1,21 @@
-package sgserver
+package app
 
 import (
 	"context"
 
-	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/interceptors/validators"
-	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service"
-	agApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/ag"
-	hostApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/host"
-	hbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/host-binding"
-	nsApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/namespace"
-	nwApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/network"
-	nbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/network-binding"
-	rlApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/rules"
-	svcApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/service"
-	sbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/service-binding"
-	statusApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/grpc/service/status"
+	agent "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/agent/grpc"
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/interceptors/validators"
+	"github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service"
+	agApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/ag"
+	hostApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/host"
+	hbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/host-binding"
+	nsApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/namespace"
+	nwApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/network"
+	nbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/network-binding"
+	rlApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/rules"
+	svcApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/service"
+	sbApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/service-binding"
+	statusApi "github.com/PRO-Robotech/sgroups/internal/sg-server/transport/sgroups/grpc/service/status"
 	"github.com/PRO-Robotech/sgroups/internal/shared/app"
 
 	config "github.com/H-BF/corlib/pkg/plain-config"
@@ -117,6 +118,7 @@ func SetupSgServer(ctx context.Context) (*server.APIServer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return server.NewAPIServer(opts...)
 }
 
@@ -132,11 +134,15 @@ func setupSgServices(ctx context.Context) ([]server.APIService, error) {
 	} else if !errors.Is(e, config.ErrNotFound) {
 		return nil, e
 	}
+	agentConnProvider, e := newAgentClientConnProvider(ctx)
+	if e != nil {
+		return nil, e
+	}
 	srv := []server.APIService{
 		nsApi.NewSgNamespaceService(ctx, getAppRepository(), opts...),
 		agApi.NewSgAddressGroupService(ctx, getAppRepository(), opts...),
 		nwApi.NewSgNetworkService(ctx, getAppRepository(), opts...),
-		hostApi.NewSgHostService(ctx, getAppRepository(), opts...),
+		hostApi.NewSgHostService(ctx, getAppRepository(), agent.NewClientProvider(agentConnProvider), opts...),
 		hbApi.NewSgHostBindingService(ctx, getAppRepository(), opts...),
 		nbApi.NewSgNetworkBindingService(ctx, getAppRepository(), opts...),
 		svcApi.NewSgServiceService(ctx, getAppRepository(), opts...),

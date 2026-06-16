@@ -28,6 +28,8 @@ var (
 	ErrEntriesOverlap = errors.New("entries overlap")
 	// ErrRuleTypeImmutable means an update targets a uid whose current rule belongs to a different rule type.
 	ErrRuleTypeImmutable = errors.New("rule type immutable")
+	// ErrDuplicateDisplayName means an insert/update would violate the per-namespace display_name uniqueness constraint.
+	ErrDuplicateDisplayName = errors.New("duplicate display_name")
 )
 
 type repoDBError struct {
@@ -93,6 +95,8 @@ func correctPGError(err error) error {
 		kind = ErrEntriesOverlap
 	case "SG0012":
 		kind = ErrRuleTypeImmutable
+	case "SG0013":
+		kind = ErrDuplicateDisplayName
 	default:
 		return err
 	}

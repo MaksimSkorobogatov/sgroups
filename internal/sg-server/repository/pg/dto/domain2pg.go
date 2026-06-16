@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 )
 
 func init() {
@@ -22,6 +23,7 @@ func init() {
 	dto.Register[domain.ResSelector, pg.ResSelector](resSelectorToPg)
 	dto.Register[domain.ResSelectorList, pg.ResSelectorList](resSelectorListToPg)
 	dto.Register[domain.ResourceRef, pg.ResourceRef](resourceRefToPg)
+	dto.Register[*domain.HostEndpoints, *pg.HostEndpoints](hostEndpointsToPg)
 	dto.Register[domain.HostInfo, pg.HostInfo](hostInfoToPg)
 	dto.Register[domain.Host, pg.Host](hostToPg)
 	dto.Register[domain.HostBinding, pg.HostBinding](hbToPg)
@@ -65,6 +67,7 @@ type domain2pgVariants interface {
 		*dto.Pair[domain.NamespacedMetadataIdentity, pg.ResPK] |
 		*dto.Pair[domain.AddressGroup, pg.AddressGroup] |
 		*dto.Pair[domain.Network, pg.Network] |
+		*dto.Pair[*domain.HostEndpoints, *pg.HostEndpoints] |
 		*dto.Pair[domain.HostInfo, pg.HostInfo] |
 		*dto.Pair[domain.Host, pg.Host] |
 		*dto.Pair[domain.HostBinding, pg.HostBinding] |
@@ -184,6 +187,25 @@ func networkToPg(src domain.Network) (dst pg.Network, err error) {
 	return dst, nil
 }
 
+func hostEndpointsToPg(src *domain.HostEndpoints) (dst *pg.HostEndpoints, err error) {
+	if src == nil {
+		return dst, err
+	}
+	dst = &pg.HostEndpoints{
+		Address: src.Address,
+	}
+	if len(src.Ports) > 0 {
+		dst.Ports = lo.Map(src.Ports, func(p domain.NamedPort, _ int) pg.NamedPort {
+			return pg.NamedPort{
+				Name: p.Name,
+				Port: pg.PortNumber(p.Port),
+			}
+		})
+	}
+
+	return dst, nil
+}
+
 func hostInfoToPg(src domain.HostInfo) (pg.HostInfo, error) {
 	return pg.HostInfo{
 		HostName:        src.HostName,
@@ -217,7 +239,9 @@ func hostToPg(src domain.Host) (dst pg.Host, err error) {
 		}
 	}
 
-	err = Domain2Pg(DTO(src.Spec.MetaInfo, &dst.MetaInfo))
+	if err = Domain2Pg(DTO(src.Spec.MetaInfo, &dst.MetaInfo)); err == nil {
+		err = Domain2Pg(DTO(src.Spec.Endpoints, &dst.Endpoints))
+	}
 
 	return dst, err
 }

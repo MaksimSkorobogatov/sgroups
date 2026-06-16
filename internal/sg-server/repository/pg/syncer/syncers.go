@@ -118,6 +118,7 @@ var HostIPsSyncer = makeHostSyncer(
 			h.Name,
 			h.Namespace,
 			h.IPs,
+			h.Endpoints,
 		}
 	},
 )

@@ -136,6 +136,26 @@ func RegisterSGroupsTypesOntoPGX(ctx context.Context, c *pgx.Conn) (err error) {
 			},
 		},
 		{
+			typeName: "sgroups.named_port",
+			run: func(tn string) error {
+				return regPgType(ctx, c, tn, func(c *pgx.Conn, tElem *pgtype.Type) error {
+					regDefPgType[NamedPort](c, tElem.Name)
+					regDefPgType[*NamedPort](c, tElem.Name)
+					return regPgArrayType(ctx, c, tElem)
+				})
+			},
+		},
+		{
+			typeName: "sgroups.host_endpoints",
+			run: func(tn string) error {
+				return regPgType(ctx, c, tn, func(c *pgx.Conn, tElem *pgtype.Type) error {
+					regDefPgType[HostEndpoints](c, tElem.Name)
+					regDefPgType[*HostEndpoints](c, tElem.Name)
+					return nil
+				})
+			},
+		},
+		{
 			typeName: "sgroups.resource_id",
 			run: func(tn string) error {
 				return regPgType(ctx, c, tn, func(c *pgx.Conn, tElem *pgtype.Type) error {

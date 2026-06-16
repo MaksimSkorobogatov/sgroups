@@ -27,6 +27,12 @@ const (
 	AnnotationPrio  = "linux-agent.sgroups.io/priority"
 )
 
+// Agent Endpoints names
+const (
+	AgentTelemetryEndpointName = "metric"
+	AgentApiEndpointName       = "api"
+)
+
 type (
 	// PortSource represents a single port num "12" or port range "12-22" as string
 	PortSource = netrc.PortSource
@@ -220,6 +226,27 @@ type (
 	// NetworkEvent - event for network resource changes
 	NetworkEvent = ResourceEvent[Network]
 
+	// Host - host resource
+	Host struct {
+		Metadata ResMetadata
+		Spec     HostSpec
+		Refs     []ResourceRef
+	}
+
+	// HostSpec - host resource spec
+	HostSpec struct {
+		CommonSpec
+		IPs       DualStackIPs
+		MetaInfo  HostInfo
+		Endpoints *HostEndpoints
+	}
+
+	// DualStackIPs -
+	DualStackIPs struct {
+		IPv4 dict.HSet[netip.Addr]
+		IPv6 dict.HSet[netip.Addr]
+	}
+
 	// HostInfo - host information
 	HostInfo struct {
 		HostName        string
@@ -230,24 +257,16 @@ type (
 		KernelVersion   string
 	}
 
-	// DualStackIPs -
-	DualStackIPs struct {
-		IPv4 dict.HSet[netip.Addr]
-		IPv6 dict.HSet[netip.Addr]
+	// HostEndpoints - host endpoints
+	HostEndpoints struct {
+		Address netip.Addr
+		Ports   []NamedPort
 	}
 
-	// HostSpec - host resource spec
-	HostSpec struct {
-		CommonSpec
-		IPs      DualStackIPs
-		MetaInfo HostInfo
-	}
-
-	// Host - host resource
-	Host struct {
-		Metadata ResMetadata
-		Spec     HostSpec
-		Refs     []ResourceRef
+	// NamedPort -
+	NamedPort struct {
+		Name string
+		Port PortNumber
 	}
 
 	// Hosts - list of hosts
@@ -556,6 +575,14 @@ func (h HostInfo) IsEq(other HostInfo) bool {
 		h.PlatformFamily == other.PlatformFamily &&
 		h.PlatformVersion == other.PlatformVersion &&
 		h.KernelVersion == other.KernelVersion
+}
+
+// IsEq -
+func (h HostEndpoints) IsEq(other HostEndpoints) bool {
+	return h.Address == other.Address &&
+		slices.EqualFunc(h.Ports, other.Ports, func(lhs, rhs NamedPort) bool {
+			return lhs.Name == rhs.Name && lhs.Port == rhs.Port
+		})
 }
 
 // IsEq -

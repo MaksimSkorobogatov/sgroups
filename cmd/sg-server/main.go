@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	. "github.com/PRO-Robotech/sgroups/internal/sg-server/app" //nolint:revive
 	"github.com/PRO-Robotech/sgroups/internal/shared/app"
 
@@ -32,6 +34,10 @@ func main() {
 		config.WithDefValue(ServerUseBufProtoValidator, false),
 		config.WithDefValue(StorageType, "POSTGRES"),
 		config.WithDefValue(AuthnType, config.AuthnTypeNONE),
+
+		config.WithDefValue(ExtapiDefDialDuration, 10*time.Second), //nolint:mnd
+		config.WithDefValue(ExtapiAgentAuthnType, config.AuthnTypeNONE),
+		config.WithDefValue(ExtapiAgentTLSServerVerify, false),
 	)
 	if err != nil {
 		logger.Fatal(ctx, err)

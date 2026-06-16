@@ -13,9 +13,9 @@ import (
 func GetVersion() string {
 	if version := strings.TrimSpace(app_identity.Version); version != "" {
 		if app_identity.BuildTag == "" {
-			return fmt.Sprintf("v%s|%s", version, app_identity.BuildHash)
+			return fmt.Sprintf("%s|%s", version, app_identity.BuildHash)
 		}
-		return "v" + version
+		return version
 	}
 
 	return misc.Tern(

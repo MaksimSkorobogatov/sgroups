@@ -102,11 +102,26 @@ func HasSubset[T comparable](a, b []T) bool {
 	if len(b) == 0 {
 		return true
 	}
-	set := dict.MakeHSet[T](a...)
+	set := dict.MakeHSet(a...)
 	for _, x := range b {
 		if !set.Contains(x) {
 			return false
 		}
 	}
 	return true
+}
+
+type isError[T any] interface {
+	Error() string
+}
+
+// ErrTo -
+func ErrTo[TRet isError[TRet]](e error) (ret TRet, ok bool) {
+	ok = ErrAs(e, &ret)
+	return ret, ok
+}
+
+// ErrAs -
+func ErrAs[T error](e error, dest *T) bool {
+	return errors.As(e, dest)
 }

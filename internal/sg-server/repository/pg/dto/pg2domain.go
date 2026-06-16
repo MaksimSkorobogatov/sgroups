@@ -11,6 +11,7 @@ import (
 	"github.com/H-BF/corlib/pkg/ranges"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 )
 
 func init() {
@@ -29,6 +30,7 @@ func init() {
 	dto.Register[pg.Namespace, domain.Namespace](namespaceToDomain)
 	dto.Register[pg.AddressGroup, domain.AddressGroup](agToDomain)
 	dto.Register[pg.Network, domain.Network](networkToDomain)
+	dto.Register[*pg.HostEndpoints, *domain.HostEndpoints](hostEndpointsToDomain)
 	dto.Register[pg.HostInfo, domain.HostInfo](hostInfoToDomain)
 	dto.Register[pg.Host, domain.Host](hostToDomain)
 	dto.Register[pg.HostBinding, domain.HostBinding](hbToDomain)
@@ -77,6 +79,7 @@ type pg2domainVariants interface {
 		*dto.Pair[pg.Namespace, domain.Namespace] |
 		*dto.Pair[pg.AddressGroup, domain.AddressGroup] |
 		*dto.Pair[pg.Network, domain.Network] |
+		*dto.Pair[*pg.HostEndpoints, *domain.HostEndpoints] |
 		*dto.Pair[pg.HostInfo, domain.HostInfo] |
 		*dto.Pair[pg.Host, domain.Host] |
 		*dto.Pair[pg.HostBinding, domain.HostBinding] |
@@ -366,6 +369,25 @@ func networkToDomain(src pg.Network) (dst domain.Network, err error) {
 	return dst, nil
 }
 
+func hostEndpointsToDomain(src *pg.HostEndpoints) (dst *domain.HostEndpoints, err error) {
+	if src == nil {
+		return dst, err
+	}
+	dst = &domain.HostEndpoints{
+		Address: src.Address,
+	}
+	if len(src.Ports) > 0 {
+		dst.Ports = lo.Map(src.Ports, func(p pg.NamedPort, _ int) domain.NamedPort {
+			return domain.NamedPort{
+				Name: p.Name,
+				Port: domain.PortNumber(p.Port), //nolint:gosec
+			}
+		})
+	}
+
+	return dst, nil
+}
+
 func hostInfoToDomain(src pg.HostInfo) (domain.HostInfo, error) {
 	return domain.HostInfo{
 		HostName:        src.HostName,
@@ -413,7 +435,9 @@ func hostToDomain(src pg.Host) (dst domain.Host, err error) {
 			return dst, err
 		}
 	}
-	err = Pg2Domain(DTO(src.MetaInfo, &dst.Spec.MetaInfo))
+	if err = Pg2Domain(DTO(src.MetaInfo, &dst.Spec.MetaInfo)); err == nil {
+		err = Pg2Domain(DTO(src.Endpoints, &dst.Spec.Endpoints))
+	}
 	return dst, err
 }
 
@@ -514,37 +538,33 @@ func portRangeToDomain(src pg.PortRange) (dst domain.PortRange, err error) {
 		err = errors.WithMessagef(err, "%T -> %T", src, dst)
 	}()
 	if src.IsNull() {
-		return nil, errors.New("we got unexpected null port range from PG")
+		return nil, domain.ErrUnexpectedNullPortRange
 	}
-	if src.Lower < 0 || src.Lower > src.Upper || src.Upper > pg.PortNumber(^domain.PortNumber(0)) {
-		return nil, errors.Errorf("we got invalid invalid port range from PG: %v - %v", src.Lower, src.Upper)
-	}
-	var (
-		retA domain.PortNumber
-		retB domain.PortNumber
-		retL bool
-		retR bool
-	)
+	lower, upper := src.Lower, src.Upper
 	bounds := []struct {
-		rB *domain.PortNumber
-		rT *bool
-		sB pg.PortNumber
-		sT pgtype.BoundType
+		val *pg.PortNumber
+		typ pgtype.BoundType
+		adj pg.PortNumber
 	}{
-		{&retA, &retL, src.Lower, src.LowerType},
-		{&retB, &retR, src.Upper, src.UpperType},
+		{&lower, src.LowerType, +1},
+		{&upper, src.UpperType, -1},
 	}
 	for _, n := range bounds {
-		switch n.sT {
+		switch n.typ {
 		case pgtype.Inclusive:
 		case pgtype.Exclusive:
-			*n.rT = true
+			*n.val += n.adj
 		default:
-			return nil, errors.Errorf("we got unexpected type of port range bound '%s' from PG", n.sT)
+			return nil, errors.Errorf("unexpected port range bound type '%s'", n.typ)
 		}
-		*n.rB = domain.PortNumber(n.sB) //nolint
 	}
-	dst = domain.PortRangeFactory.Range(retA, retL, retB, retR)
+	if lower < 0 || lower > upper || upper > pg.PortNumber(^domain.PortNumber(0)) {
+		return nil, errors.Errorf("invalid port range: %v - %v", lower, upper)
+	}
+	dst = domain.PortRangeFactory.Range(
+		domain.PortNumber(lower), false, //nolint
+		domain.PortNumber(upper), false, //nolint
+	)
 	err = domain.ValidatePortRange(dst, false)
 	return dst, err
 }

@@ -642,6 +642,133 @@ func (s *pg2DomainTestSuite) Test_PortRanges() {
 	s.True(got.Eq(exp))
 }
 
+func (s *pg2DomainTestSuite) Test_PortRange_MaxSinglePort() {
+	// PostgreSQL canonicalizes the single port 65535 (written inclusive as
+	// [65535, 65535]) to the half-open form [65535, 65536). The exclusive upper
+	// 65536 must neither be rejected nor overflow domain.PortNumber (uint16).
+	src := pg.PortRange{Range: pgtype.Range[pg.PortNumber]{
+		Lower:     65535,
+		Upper:     65536,
+		LowerType: pgtype.Inclusive,
+		UpperType: pgtype.Exclusive,
+		Valid:     true,
+	}}
+
+	var got domain.PortRange
+	err := Pg2Domain(DTO(src, &got))
+	s.NoError(err)
+
+	exp := domain.PortRangeFactory.Range(domain.PortNumber(65535), false, domain.PortNumber(65535), false)
+	s.True(ranges.AreRangesEq(exp, got))
+}
+
+func (s *pg2DomainTestSuite) Test_PortRanges_MaxRange() {
+	// Range 49152-65535 comes back from PG as the half-open [49152, 65536).
+	src := pg.PortMultirange{Multirange: []pg.PortRange{
+		{Range: pgtype.Range[pg.PortNumber]{Lower: 49152, Upper: 65536, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true}},
+	}}
+
+	var got domain.PortRanges
+	err := Pg2Domain(DTO(src, &got))
+	s.NoError(err)
+
+	exp := ranges.NewMultiRange(domain.PortRangeFactory)
+	exp.Update(ranges.CombineMerge,
+		domain.PortRangeFactory.Range(domain.PortNumber(49152), false, domain.PortNumber(65535), false),
+	)
+	s.True(got.Eq(exp))
+}
+
+func (s *pg2DomainTestSuite) Test_PortRange_LowBoundary() {
+	// Port 1 ([1, 2) after PG canonicalization) — the low end of the valid range.
+	src := pg.PortRange{Range: pgtype.Range[pg.PortNumber]{
+		Lower: 1, Upper: 2, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true,
+	}}
+
+	var got domain.PortRange
+	err := Pg2Domain(DTO(src, &got))
+	s.NoError(err)
+
+	exp := domain.PortRangeFactory.Range(domain.PortNumber(1), false, domain.PortNumber(1), false)
+	s.True(ranges.AreRangesEq(exp, got))
+}
+
+func (s *pg2DomainTestSuite) Test_PortRange_BothBoundsExclusive() {
+	// Defensive: when both bounds are exclusive (80, 82) the fold must collapse
+	// from both sides onto the single inclusive port 81.
+	src := pg.PortRange{Range: pgtype.Range[pg.PortNumber]{
+		Lower: 80, Upper: 82, LowerType: pgtype.Exclusive, UpperType: pgtype.Exclusive, Valid: true,
+	}}
+
+	var got domain.PortRange
+	err := Pg2Domain(DTO(src, &got))
+	s.NoError(err)
+
+	exp := domain.PortRangeFactory.Range(domain.PortNumber(81), false, domain.PortNumber(81), false)
+	s.True(ranges.AreRangesEq(exp, got))
+}
+
+func (s *pg2DomainTestSuite) Test_PortRanges_MixedWithMaxPort() {
+	// A service exposing several ports including 65535: the max-port element must
+	// not poison the rest of the multirange.
+	src := pg.PortMultirange{Multirange: []pg.PortRange{
+		{Range: pgtype.Range[pg.PortNumber]{Lower: 80, Upper: 81, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true}},
+		{Range: pgtype.Range[pg.PortNumber]{Lower: 65535, Upper: 65536, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true}},
+	}}
+
+	var got domain.PortRanges
+	err := Pg2Domain(DTO(src, &got))
+	s.NoError(err)
+
+	exp := ranges.NewMultiRange(domain.PortRangeFactory)
+	exp.Update(ranges.CombineMerge,
+		domain.PortRangeFactory.Range(domain.PortNumber(80), false, domain.PortNumber(80), false),
+		domain.PortRangeFactory.Range(domain.PortNumber(65535), false, domain.PortNumber(65535), false),
+	)
+	s.True(got.Eq(exp))
+}
+
+func (s *pg2DomainTestSuite) Test_PortRange_Null() {
+	src := pg.PortRange{Range: pgtype.Range[pg.PortNumber]{Valid: false}}
+
+	var got domain.PortRange
+	err := Pg2Domain(DTO(src, &got))
+	s.Require().ErrorIs(err, domain.ErrUnexpectedNullPortRange)
+}
+
+func (s *pg2DomainTestSuite) Test_PortRange_Errors() {
+	testCases := []struct {
+		name    string
+		src     pg.PortRange
+		wantMsg string
+	}{
+		{
+			name:    "unexpected bound type",
+			src:     pg.PortRange{Range: pgtype.Range[pg.PortNumber]{Lower: 1, Upper: 2, LowerType: pgtype.Unbounded, UpperType: pgtype.Exclusive, Valid: true}},
+			wantMsg: "unexpected port range bound type",
+		},
+		{
+			name:    "upper out of uint16 range",
+			src:     pg.PortRange{Range: pgtype.Range[pg.PortNumber]{Lower: 1, Upper: 70000, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true}},
+			wantMsg: "invalid port range",
+		},
+		{
+			name:    "lower greater than upper after fold",
+			src:     pg.PortRange{Range: pgtype.Range[pg.PortNumber]{Lower: 5, Upper: 5, LowerType: pgtype.Inclusive, UpperType: pgtype.Exclusive, Valid: true}},
+			wantMsg: "invalid port range",
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			var got domain.PortRange
+			err := Pg2Domain(DTO(tc.src, &got))
+			s.Error(err)
+			s.Contains(err.Error(), tc.wantMsg)
+		})
+	}
+}
+
 func (s *pg2DomainTestSuite) Test_IcmpEntry() {
 	src := pg.IcmpEntries{Description: "desc", Comment: "comm", Types: []int16{8, 0, 3}}
 

@@ -34,11 +34,9 @@ func (rn ResourceNamespace) Validate() error {
 
 // Validate validates the DisplayName according to the specified rules.
 func (dn DisplayName) Validate() error {
-	const maxLen = 63
 	return oz.Validate(
 		string(dn),
-		oz.RuneLength(0, maxLen).
-			Error(fmt.Sprintf("display name must be no longer than %d characters", maxLen)),
+		oz.When(dn != "", isName),
 	)
 }
 
@@ -208,6 +206,7 @@ func (h HostSpec) Validate() error {
 	return oz.ValidateStruct(&h,
 		oz.Field(&h.DisplayName),
 		oz.Field(&h.IPs),
+		oz.Field(&h.Endpoints),
 	)
 }
 
@@ -241,6 +240,39 @@ func (d DualStackIPs) Validate() error {
 		&d,
 		oz.Field(&d.IPv4, onlyV4),
 		oz.Field(&d.IPv6, onlyV6),
+	)
+}
+
+// Validate -
+func (h HostEndpoints) Validate() error {
+	return oz.ValidateStruct(&h,
+		oz.Field(&h.Address,
+			validateRule(func(a netip.Addr) error {
+				if !a.IsValid() {
+					return errors.New("invalid IP address")
+				}
+				return nil
+			})),
+		oz.Field(&h.Ports,
+			validateRule(validateUniqueNamedPorts),
+			oz.Each(validateRule(func(p NamedPort) error {
+				return p.Validate()
+			})),
+		),
+	)
+}
+
+// Validate -
+func (n NamedPort) Validate() error {
+	return oz.ValidateStruct(&n,
+		oz.Field(&n.Port,
+			validateRule(func(p PortNumber) error {
+				if p == 0 {
+					return errors.New("port must be > 0")
+				}
+				return nil
+			}),
+		),
 	)
 }
 
@@ -577,6 +609,13 @@ func validateTransportByMatrix(r RuleSpec) error {
 			"spec.transport is required when traffic destination is not a Service "+
 				"(traffic=%s, local=%s, remote=%s)",
 			r.Traffic, local.Type, remoteType)
+	}
+	return nil
+}
+
+func validateUniqueNamedPorts(ps []NamedPort) error {
+	if len(lo.UniqBy(ps, func(p NamedPort) string { return p.Name })) != len(ps) {
+		return errors.New("duplicate ports: same name")
 	}
 	return nil
 }
