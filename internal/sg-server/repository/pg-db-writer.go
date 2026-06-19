@@ -66,6 +66,10 @@ func (wr *pgDbWriter) SyncHost(ctx context.Context, scope Scope, op SyncOp) (ret
 		api = "SyncHostInfo"
 		hosts = sc.Hosts
 		hostSyncer = syncer.HostInfoSyncer
+	case scopes.ScopeByHostHealth:
+		api = "SyncHostHealth"
+		hosts = sc.Hosts
+		hostSyncer = syncer.HostHealthSyncer
 	case scopes.ScopeByHosts:
 		api = "SyncHost"
 		hosts = sc.Hosts

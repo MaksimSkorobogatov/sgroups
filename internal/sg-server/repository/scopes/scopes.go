@@ -89,6 +89,9 @@ type (
 	// ScopeByHostInfo -
 	ScopeByHostInfo ScopeByHosts
 
+	// ScopeByHostHealth -
+	ScopeByHostHealth ScopeByHosts
+
 	// ScopeByServiceBindingSelectors -
 	ScopeByServiceBindingSelectors struct {
 		filter.Scope

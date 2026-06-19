@@ -242,6 +242,7 @@ func hostToPg(src domain.Host) (dst pg.Host, err error) {
 	if err = Domain2Pg(DTO(src.Spec.MetaInfo, &dst.MetaInfo)); err == nil {
 		err = Domain2Pg(DTO(src.Spec.Endpoints, &dst.Endpoints))
 	}
+	dst.HealthStatus = src.Spec.HealthStatus
 
 	return dst, err
 }
