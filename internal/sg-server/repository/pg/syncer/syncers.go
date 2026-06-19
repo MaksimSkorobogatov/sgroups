@@ -136,6 +136,19 @@ var HostInfoSyncer = makeHostSyncer(
 	},
 )
 
+// HostHealthSyncer -
+var HostHealthSyncer = makeHostSyncer(
+	"sgroups.sync_host_health_status",
+	func(h pg.Host) []any {
+		return []any{
+			h.UID,
+			h.Name,
+			h.Namespace,
+			h.HealthStatus,
+		}
+	},
+)
+
 // HostSyncer -
 var HostSyncer = makeHostSyncer(
 	"sgroups.sync_hosts",

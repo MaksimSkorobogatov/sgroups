@@ -25,6 +25,9 @@ func init() {
 	dto.Register[domain.HostEvent, *pb.HostResp_Watch](hostEventToProto)
 	dto.Register[domain.Hosts, *pb.HostResp_UpdIPs](updIpToProto)
 	dto.Register[domain.Hosts, *pb.HostResp_UpdMetaInfo](updMetaInfoToProto)
+
+	// TODO: Раскоментировать после добавления proto:
+	// dto.Register[domain.Hosts, *pb.HostResp_UpdHealthStatus](updHealthToProto)
 }
 
 // Domain2Proto -
@@ -189,3 +192,16 @@ func updMetaInfoToProto(src domain.Hosts) (dest *pb.HostResp_UpdMetaInfo, err er
 	}
 	return dest, nil
 }
+
+// TODO: Раскоментировать после обновления proto.
+//func updHealthToProto(src domain.Hosts) (dest *pb.HostResp_UpdHealthStatus, err error) {
+//	dest = &pb.HostResp_UpdHealthStatus{
+//		Hosts: misc.Tern(len(src) > 0, make([]*pb.Host, len(src)), nil),
+//	}
+//	for i, h := range src {
+//		if err = Domain2Proto(DTO(h, &dest.Hosts[i])); err != nil {
+//			return dest, err
+//		}
+//	}
+//	return dest, nil
+//}
