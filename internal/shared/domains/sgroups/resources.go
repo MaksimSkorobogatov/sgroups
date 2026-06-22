@@ -236,10 +236,10 @@ type (
 	// HostSpec - host resource spec
 	HostSpec struct {
 		CommonSpec
-		IPs          DualStackIPs
-		MetaInfo     HostInfo
-		Endpoints    *HostEndpoints
-		HealthStatus *bool
+		IPs       DualStackIPs
+		MetaInfo  HostInfo
+		Endpoints *HostEndpoints
+		Healthy   *bool
 	}
 
 	// DualStackIPs -
@@ -559,7 +559,7 @@ func (h HostSpec) IsEq(other HostSpec) bool {
 	return h.CommonSpec.IsEq(other.CommonSpec) &&
 		h.MetaInfo.IsEq(other.MetaInfo) &&
 		h.IPs.IsEq(other.IPs) &&
-		boolPtrEq(h.HealthStatus, other.HealthStatus)
+		boolPtrEq(h.Healthy, other.Healthy)
 }
 
 func boolPtrEq(a, b *bool) bool {

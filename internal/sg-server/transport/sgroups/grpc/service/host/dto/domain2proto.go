@@ -25,9 +25,7 @@ func init() {
 	dto.Register[domain.HostEvent, *pb.HostResp_Watch](hostEventToProto)
 	dto.Register[domain.Hosts, *pb.HostResp_UpdIPs](updIpToProto)
 	dto.Register[domain.Hosts, *pb.HostResp_UpdMetaInfo](updMetaInfoToProto)
-
-	// TODO: Раскоментировать после добавления proto:
-	// dto.Register[domain.Hosts, *pb.HostResp_UpdHealthStatus](updHealthToProto)
+	dto.Register[domain.Hosts, *pb.HostResp_UpdHealthStatus](updHealthToProto)
 }
 
 // Domain2Proto -
@@ -46,7 +44,8 @@ type domain2protoVariants interface {
 		*dto.Pair[domain.HostList, *pb.HostResp_List] |
 		*dto.Pair[domain.HostEvent, *pb.HostResp_Watch] |
 		*dto.Pair[domain.Hosts, *pb.HostResp_UpdIPs] |
-		*dto.Pair[domain.Hosts, *pb.HostResp_UpdMetaInfo]
+		*dto.Pair[domain.Hosts, *pb.HostResp_UpdMetaInfo] |
+		*dto.Pair[domain.Hosts, *pb.HostResp_UpdHealthStatus]
 	Convert() error
 }
 
@@ -90,6 +89,9 @@ func specToProto(src domain.HostSpec) (dest *pb.Host_Spec, err error) {
 		Comment:     src.Comment,
 		Description: src.Description,
 		Ips:         new(common.IPs),
+	}
+	if src.Healthy != nil {
+		dest.Healthy = *src.Healthy
 	}
 
 	for _, ip := range slices.Concat(src.IPs.IPv4.Values(), src.IPs.IPv6.Values()) {
@@ -193,15 +195,14 @@ func updMetaInfoToProto(src domain.Hosts) (dest *pb.HostResp_UpdMetaInfo, err er
 	return dest, nil
 }
 
-// TODO: Раскоментировать после обновления proto.
-//func updHealthToProto(src domain.Hosts) (dest *pb.HostResp_UpdHealthStatus, err error) {
-//	dest = &pb.HostResp_UpdHealthStatus{
-//		Hosts: misc.Tern(len(src) > 0, make([]*pb.Host, len(src)), nil),
-//	}
-//	for i, h := range src {
-//		if err = Domain2Proto(DTO(h, &dest.Hosts[i])); err != nil {
-//			return dest, err
-//		}
-//	}
-//	return dest, nil
-//}
+func updHealthToProto(src domain.Hosts) (dest *pb.HostResp_UpdHealthStatus, err error) {
+	dest = &pb.HostResp_UpdHealthStatus{
+		Hosts: misc.Tern(len(src) > 0, make([]*pb.Host, len(src)), nil),
+	}
+	for i, h := range src {
+		if err = Domain2Proto(DTO(h, &dest.Hosts[i])); err != nil {
+			return dest, err
+		}
+	}
+	return dest, nil
+}

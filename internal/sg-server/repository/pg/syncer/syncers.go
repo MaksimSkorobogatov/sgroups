@@ -144,7 +144,7 @@ var HostHealthSyncer = makeHostSyncer(
 			h.UID,
 			h.Name,
 			h.Namespace,
-			h.HealthStatus,
+			h.Healthy,
 		}
 	},
 )

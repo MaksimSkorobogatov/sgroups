@@ -31,10 +31,9 @@ func init() {
 	dto.Register[*pb.HostReq_UpdMetaInfo_HostInfo, domain.Host](updMetaInfoHostToDomain)
 	dto.Register[*pb.HostReq_UpdMetaInfo, domain.Hosts](updMetaInfoToDomain)
 
-	// TODO: Раскоментировать после создания типов proto:
-	// dto.Register[*pb.HostReq_UpdHealthStatus_Host_Spec, domain.HostSpec](updHealthSpecToDomain)
-	// dto.Register[*pb.HostReq_UpdHealthStatus_Host, domain.Host](updHealthHostToDomain)
-	// dto.Register[*pb.HostReq_UpdHealthStatus, domain.Hosts](updHealthToDomain)
+	dto.Register[*pb.HostReq_UpdHealthStatus_Host_Spec, domain.HostSpec](updHealthSpecToDomain)
+	dto.Register[*pb.HostReq_UpdHealthStatus_Host, domain.Host](updHealthHostToDomain)
+	dto.Register[*pb.HostReq_UpdHealthStatus, domain.Hosts](updHealthToDomain)
 
 	dto.Register[*pb.HostReq_SocketStatistics_FieldSelector, domain.ResSelector](ssSelectorToDomain)
 	dto.Register[*pb.HostReq_SocketStatistics_List, domain.ResSelectorList](ssListReqToDomain)
@@ -72,6 +71,11 @@ type proto2domainVariants interface {
 		*dto.Pair[*pb.HostReq_UpdMetaInfo_HostInfo_Spec, domain.HostSpec] |
 		*dto.Pair[*pb.HostReq_UpdMetaInfo_HostInfo, domain.Host] |
 		*dto.Pair[*pb.HostReq_UpdMetaInfo, domain.Hosts] |
+
+		*dto.Pair[*pb.HostReq_UpdHealthStatus_Host_Spec, domain.HostSpec] |
+		*dto.Pair[*pb.HostReq_UpdHealthStatus_Host, domain.Host] |
+		*dto.Pair[*pb.HostReq_UpdHealthStatus, domain.Hosts] |
+
 		*dto.Pair[*pb.HostReq_SocketStatistics_FieldSelector, domain.ResSelector] |
 		*dto.Pair[*pb.HostReq_SocketStatistics_List, domain.ResSelectorList] |
 		*dto.Pair[*pb.HostReq_SocketStatistics_Watch, domain.ResSelectorList] |
@@ -120,6 +124,9 @@ func specToDomain(src *pb.Host_Spec) (dest domain.HostSpec, err error) {
 		}
 		dest.IPs.IPv6.Put(addr)
 	}
+
+	v := src.GetHealthy()
+	dest.Healthy = &v
 
 	err = Proto2Domain(DTO(src.GetMetaInfo(), &dest.MetaInfo))
 
@@ -355,38 +362,36 @@ func nftWatchReqToDomain(src *pb.HostReq_Nft_Watch) (dest domain.ResSelectorList
 	return dest, nil
 }
 
-// TODO: Раскоментировать после добавления proto.
-//
-// func updHealthSpecToDomain(src *pb.HostReq_UpdHealthStatus_Host_Spec) (dest domain.HostSpec, err error) {
-// 	defer func() {
-// 		err = errors.WithMessagef(err, "%T -> %T", src, dest)
-// 	}()
-// 	v := src.GetHealthy()
-// 	dest.HealthStatus = &v
-// 	return dest, err
-// }
-//
-// func updHealthHostToDomain(src *pb.HostReq_UpdHealthStatus_Host) (dest domain.Host, err error) {
-// 	defer func() {
-// 		err = errors.WithMessagef(err, "%T -> %T", src, dest)
-// 	}()
-// 	err = Proto2Domain(DTO(src.GetSpec(), &dest.Spec))
-// 	if err != nil {
-// 		return dest, err
-// 	}
-// 	err = cdto.Proto2Domain(cdto.DTO(src.GetMetadata(), &dest.Metadata))
-// 	return dest, err
-// }
-//
-// func updHealthToDomain(src *pb.HostReq_UpdHealthStatus) (dest domain.Hosts, err error) {
-// 	defer func() {
-// 		err = errors.WithMessagef(err, "%T -> %T", src, dest)
-// 	}()
-// 	dest = misc.Tern(len(src.GetHosts()) > 0, make(domain.Hosts, len(src.GetHosts())), nil)
-// 	for i, host := range src.GetHosts() {
-// 		if err = Proto2Domain(DTO(host, &dest[i])); err != nil {
-// 			return dest, err
-// 		}
-// 	}
-// 	return dest, nil
-// }
+func updHealthSpecToDomain(src *pb.HostReq_UpdHealthStatus_Host_Spec) (dest domain.HostSpec, err error) {
+	defer func() {
+		err = errors.WithMessagef(err, "%T -> %T", src, dest)
+	}()
+	v := src.GetHealthy()
+	dest.Healthy = &v
+	return dest, err
+}
+
+func updHealthHostToDomain(src *pb.HostReq_UpdHealthStatus_Host) (dest domain.Host, err error) {
+	defer func() {
+		err = errors.WithMessagef(err, "%T -> %T", src, dest)
+	}()
+	err = Proto2Domain(DTO(src.GetSpec(), &dest.Spec))
+	if err != nil {
+		return dest, err
+	}
+	err = cdto.Proto2Domain(cdto.DTO(src.GetMetadata(), &dest.Metadata))
+	return dest, err
+}
+
+func updHealthToDomain(src *pb.HostReq_UpdHealthStatus) (dest domain.Hosts, err error) {
+	defer func() {
+		err = errors.WithMessagef(err, "%T -> %T", src, dest)
+	}()
+	dest = misc.Tern(len(src.GetHosts()) > 0, make(domain.Hosts, len(src.GetHosts())), nil)
+	for i, host := range src.GetHosts() {
+		if err = Proto2Domain(DTO(host, &dest[i])); err != nil {
+			return dest, err
+		}
+	}
+	return dest, nil
+}

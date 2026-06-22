@@ -16,8 +16,6 @@ github.com/PRO-Robotech/nft-go v0.0.4-dev.3 h1:zfahdfJCcW/8+j47kEJhZDNJhzoRz308f
 github.com/PRO-Robotech/nft-go v0.0.4-dev.3/go.mod h1:ZeuEwz762ysTfvvd0moj5nkhLW0epAy8otEz0OKhZUA=
 github.com/PRO-Robotech/nftrace v0.0.8 h1:fwHfVE7bVsm1IVY13M4g1hbiIZn0XrxWkAh9H6iXNCE=
 github.com/PRO-Robotech/nftrace v0.0.8/go.mod h1:9ivG7qayKkDgcs+EXKKSd0EBtft2r4c5hEtGOpjd7e4=
-github.com/PRO-Robotech/sgroups-proto v0.2.0 h1:Prmq+Xsdpi23/5gtmL9E7U8EdC1KN27lKeN9+C7Vnss=
-github.com/PRO-Robotech/sgroups-proto v0.2.0/go.mod h1:1XBRmQiRvPbzmD1flXFhiwGywqQ+5B3bR5cZEp8m7jg=
 github.com/ahmetb/go-linq/v3 v3.2.0 h1:BEuMfp+b59io8g5wYzNoFe9pWPalRklhlhbiU3hYZDE=
 github.com/ahmetb/go-linq/v3 v3.2.0/go.mod h1:haQ3JfOeWK8HpVxMtHHEMPVgBKiYyQ+f1/kLZh/cj9U=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=

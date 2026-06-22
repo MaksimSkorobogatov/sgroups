@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 alter table sgroups.tbl_host
-  add column if not exists health_status boolean;
+  add column if not exists healthy boolean;
 
 create or replace view sgroups.vu_host as
 select
@@ -25,16 +25,16 @@ select
   h.creation_timestamp,
   h.resource_version,
   h.endpoints,
-  h.health_status
+  h.healthy
 from sgroups.tbl_host as h
 left join sgroups.tbl_namespace ns on ns.id = h.ns;
 
 drop type if exists sgroups.row_of__host_health cascade;
 create type sgroups.row_of__host_health as (
-  uid            uuid,
-  name           text,
-  namespace      text,
-  health_status  boolean
+  uid       uuid,
+  name      text,
+  namespace text,
+  healthy   boolean
 );
 
 drop function if exists sgroups.sync_host_health_status(sgroups.sync_op, sgroups.row_of__host_health) cascade;
@@ -73,7 +73,7 @@ begin
   end if;
 
   update sgroups.tbl_host t
-     set health_status = (d).health_status
+     set healthy = (d).healthy
    where t.id = hostID;
 
   return query select v.* from sgroups.vu_host v where v.uid = (d).uid;
@@ -111,6 +111,6 @@ left join sgroups.tbl_namespace ns on ns.id = h.ns;
 
 drop function if exists sgroups.sync_host_health_status(sgroups.sync_op, sgroups.row_of__host_health) cascade;
 drop type if exists sgroups.row_of__host_health cascade;
-alter table sgroups.tbl_host drop column if exists health_status;
+alter table sgroups.tbl_host drop column if exists healthy;
 
 -- +goose StatementEnd
