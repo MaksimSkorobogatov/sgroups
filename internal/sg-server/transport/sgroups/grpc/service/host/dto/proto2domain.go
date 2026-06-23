@@ -31,7 +31,6 @@ func init() {
 	dto.Register[*pb.HostReq_UpdMetaInfo_HostInfo, domain.Host](updMetaInfoHostToDomain)
 	dto.Register[*pb.HostReq_UpdMetaInfo, domain.Hosts](updMetaInfoToDomain)
 
-	dto.Register[*pb.HostReq_UpdHealthStatus_Host_Spec, domain.HostSpec](updHealthSpecToDomain)
 	dto.Register[*pb.HostReq_UpdHealthStatus_Host, domain.Host](updHealthHostToDomain)
 	dto.Register[*pb.HostReq_UpdHealthStatus, domain.Hosts](updHealthToDomain)
 
@@ -361,19 +360,11 @@ func nftWatchReqToDomain(src *pb.HostReq_Nft_Watch) (dest domain.ResSelectorList
 	return dest, nil
 }
 
-func updHealthSpecToDomain(src *pb.HostReq_UpdHealthStatus_Host_Spec) (dest domain.HostSpec, err error) {
-	dest.Healthy = src.GetHealthy()
-	return dest, nil
-}
-
 func updHealthHostToDomain(src *pb.HostReq_UpdHealthStatus_Host) (dest domain.Host, err error) {
 	defer func() {
 		err = errors.WithMessagef(err, "%T -> %T", src, dest)
 	}()
-	err = Proto2Domain(DTO(src.GetSpec(), &dest.Spec))
-	if err != nil {
-		return dest, err
-	}
+	dest.Spec.Healthy = src.GetSpec().GetHealthy()
 	err = cdto.Proto2Domain(cdto.DTO(src.GetMetadata(), &dest.Metadata))
 	return dest, err
 }
