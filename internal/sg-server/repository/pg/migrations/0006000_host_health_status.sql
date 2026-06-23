@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 alter table sgroups.tbl_host
-  add column if not exists healthy boolean;
+  add column if not exists healthy boolean not null default false;
 
 create or replace view sgroups.vu_host as
 select

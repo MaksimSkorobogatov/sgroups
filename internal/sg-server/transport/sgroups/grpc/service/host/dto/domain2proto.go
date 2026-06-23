@@ -90,9 +90,7 @@ func specToProto(src domain.HostSpec) (dest *pb.Host_Spec, err error) {
 		Description: src.Description,
 		Ips:         new(common.IPs),
 	}
-	if src.Healthy != nil {
-		dest.Healthy = *src.Healthy
-	}
+	dest.Healthy = src.Healthy
 
 	for _, ip := range slices.Concat(src.IPs.IPv4.Values(), src.IPs.IPv6.Values()) {
 		if ip.Is4() {

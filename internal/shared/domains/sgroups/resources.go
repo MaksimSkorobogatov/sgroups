@@ -239,7 +239,7 @@ type (
 		IPs       DualStackIPs
 		MetaInfo  HostInfo
 		Endpoints *HostEndpoints
-		Healthy   *bool
+		Healthy   bool
 	}
 
 	// DualStackIPs -
@@ -559,17 +559,7 @@ func (h HostSpec) IsEq(other HostSpec) bool {
 	return h.CommonSpec.IsEq(other.CommonSpec) &&
 		h.MetaInfo.IsEq(other.MetaInfo) &&
 		h.IPs.IsEq(other.IPs) &&
-		boolPtrEq(h.Healthy, other.Healthy)
-}
-
-func boolPtrEq(a, b *bool) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
+		h.Healthy == other.Healthy
 }
 
 // IsEq -

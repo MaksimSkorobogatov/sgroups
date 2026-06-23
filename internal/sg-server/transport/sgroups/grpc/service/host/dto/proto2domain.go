@@ -125,8 +125,7 @@ func specToDomain(src *pb.Host_Spec) (dest domain.HostSpec, err error) {
 		dest.IPs.IPv6.Put(addr)
 	}
 
-	v := src.GetHealthy()
-	dest.Healthy = &v
+	dest.Healthy = src.GetHealthy()
 
 	err = Proto2Domain(DTO(src.GetMetaInfo(), &dest.MetaInfo))
 
@@ -363,12 +362,8 @@ func nftWatchReqToDomain(src *pb.HostReq_Nft_Watch) (dest domain.ResSelectorList
 }
 
 func updHealthSpecToDomain(src *pb.HostReq_UpdHealthStatus_Host_Spec) (dest domain.HostSpec, err error) {
-	defer func() {
-		err = errors.WithMessagef(err, "%T -> %T", src, dest)
-	}()
-	v := src.GetHealthy()
-	dest.Healthy = &v
-	return dest, err
+	dest.Healthy = src.GetHealthy()
+	return dest, nil
 }
 
 func updHealthHostToDomain(src *pb.HostReq_UpdHealthStatus_Host) (dest domain.Host, err error) {
