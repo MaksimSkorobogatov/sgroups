@@ -126,4 +126,4 @@ replace github.com/google/nftables v0.3.0 => github.com/H-BF/nftables v0.3.1-dev
 
 replace github.com/H-BF/corlib v1.2.30-dev => github.com/PRO-Robotech/corelib v1.2.28-dev
 
-replace github.com/PRO-Robotech/sgroups-proto v0.2.0 => ../sgroups-proto // TODO: delete before merging
+replace github.com/PRO-Robotech/sgroups-proto v0.2.0 => github.com/MaksimSkorobogatov/sgroups-proto v0.4.0 // TODO: delete before merging

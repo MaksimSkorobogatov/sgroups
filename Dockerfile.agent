@@ -16,7 +16,6 @@ ARG TARGETARCH
 
 # copy all source code for build
 WORKDIR /src
-COPY --from=sgroups-proto /. /src/../sgroups-proto/
 COPY . .
 
 RUN apk add --no-cache make bash && \
