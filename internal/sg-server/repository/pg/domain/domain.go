@@ -164,13 +164,13 @@ type (
 	// Host -
 	Host struct {
 		ResMetadata
-		IPs               []netip.Addr  `db:"ips" json:"ips"`
-		MetaInfo          HostInfo      `db:"meta_info" json:"meta_info"`
+		IPs               []netip.Addr   `db:"ips" json:"ips"`
+		MetaInfo          HostInfo       `db:"meta_info" json:"meta_info"`
 		Endpoints         *HostEndpoints `db:"endpoints" json:"endpoints"`
-		Healthy           bool          `db:"healthy" json:"healthy"`
-		Refs              []ResourceRef `db:"refs" json:"refs"`
-		CreationTimestamp time.Time     `db:"creation_timestamp" json:"creation_timestamp"`
-		ResourceVersion   string        `db:"resource_version" json:"resource_version"`
+		Healthy           bool           `db:"healthy" json:"healthy"`
+		Refs              []ResourceRef  `db:"refs" json:"refs"`
+		CreationTimestamp time.Time      `db:"creation_timestamp" json:"creation_timestamp"`
+		ResourceVersion   string         `db:"resource_version" json:"resource_version"`
 	}
 
 	// HostInfo -

@@ -124,8 +124,6 @@ func specToDomain(src *pb.Host_Spec) (dest domain.HostSpec, err error) {
 		dest.IPs.IPv6.Put(addr)
 	}
 
-	dest.Healthy = src.GetHealthy()
-
 	err = Proto2Domain(DTO(src.GetMetaInfo(), &dest.MetaInfo))
 
 	return dest, err

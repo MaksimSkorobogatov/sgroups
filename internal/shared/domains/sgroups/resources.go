@@ -559,7 +559,18 @@ func (h HostSpec) IsEq(other HostSpec) bool {
 	return h.CommonSpec.IsEq(other.CommonSpec) &&
 		h.MetaInfo.IsEq(other.MetaInfo) &&
 		h.IPs.IsEq(other.IPs) &&
-		h.Healthy == other.Healthy
+		h.Healthy == other.Healthy &&
+		h.endpointsEq(other.Endpoints)
+}
+
+func (h HostSpec) endpointsEq(other *HostEndpoints) bool {
+	if h.Endpoints == nil && other == nil {
+		return true
+	}
+	if h.Endpoints == nil || other == nil {
+		return false
+	}
+	return h.Endpoints.IsEq(*other)
 }
 
 // IsEq -

@@ -43,7 +43,7 @@ func (s *domainColumnsAndJSONSuite) Test_Columns() {
 		{
 			name: "Host",
 			got:  func() []string { return (Host{}).Columns() },
-			exp:  []string{"uid", "name", "namespace", "display_name", "comment", "description", "labels", "annotations", "ips", "meta_info", "endpoints", "refs", "creation_timestamp", "resource_version"},
+			exp:  []string{"uid", "name", "namespace", "display_name", "comment", "description", "labels", "annotations", "ips", "meta_info", "endpoints", "healthy", "refs", "creation_timestamp", "resource_version"},
 		},
 		{
 			name: "HostBinding",
