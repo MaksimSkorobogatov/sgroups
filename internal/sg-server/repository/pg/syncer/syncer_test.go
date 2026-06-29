@@ -256,6 +256,92 @@ func (sui *namespaceSyncerTestSuite) Test_ConvertsPgDomain() {
 	sui.Require().NoError(mock.ExpectationsWereMet())
 }
 
+func Test_HostHealthSyncer_Upsert(t *testing.T) {
+	ctx := context.Background()
+
+	mock, err := pgxmock.NewConn()
+	require.NoError(t, err)
+	defer func() { _ = mock.Close(ctx) }()
+
+	uid := uuid.MustParse("aaaa1111-1111-1111-1111-111111111111")
+	ts := time.Date(2026, 6, 29, 12, 0, 0, 0, time.UTC)
+
+	input := domain.Host{
+		Metadata: domain.ResMetadata{
+			ID: domain.NamespacedMetadataIdentity{
+				ClusterScopeMetadataIdentity: domain.ClusterScopeMetadataIdentity{
+					UID:  uid,
+					Name: domain.ResourceName("h-health"),
+				},
+				Namespace: domain.ResourceNamespace("ns-1"),
+			},
+		},
+		Spec: domain.HostSpec{
+			Healthy: true,
+		},
+	}
+
+	pgObj, err := HostHealthSyncer.toPgConv(input)
+	require.NoError(t, err)
+	args := HostHealthSyncer.syncArgs(pgObj)
+
+	require.Len(t, args, 4)
+	require.Equal(t, uid, args[0])
+	require.Equal(t, "h-health", args[1])
+	require.Equal(t, "ns-1", args[2])
+	require.Equal(t, true, args[3])
+
+	rows := mock.NewRows([]string{
+		"uid", "name", "namespace",
+		"display_name", "comment", "description",
+		"labels", "annotations",
+		"ips", "meta_info", "refs",
+		"creation_timestamp", "resource_version", "endpoints", "healthy",
+	}).AddRow(
+		uid, "h-health", "ns-1",
+		"", "", "",
+		map[string]string{}, map[string]string{},
+		nil, nil, nil,
+		ts, "11", nil, true,
+	)
+
+	mock.ExpectQuery(`^select \* from sgroups\.sync_host_health_status\('ups',\s*row\(\$1,\$2,\$3,\$4\)\)$`).
+		WithArgs(args...).
+		WillReturnRows(rows)
+
+	got, err := HostHealthSyncer.Sync(ctx, mock, Upsert, []domain.Host{input})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, uid, got[0].Metadata.ID.UID)
+	require.Equal(t, domain.ResourceName("h-health"), got[0].Metadata.ID.Name)
+	require.True(t, got[0].Spec.Healthy)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func Test_HostHealthSyncer_SyncArgs_HealthyFalse(t *testing.T) {
+	input := domain.Host{
+		Metadata: domain.ResMetadata{
+			ID: domain.NamespacedMetadataIdentity{
+				ClusterScopeMetadataIdentity: domain.ClusterScopeMetadataIdentity{
+					UID:  uuid.MustParse("bbbb2222-2222-2222-2222-222222222222"),
+					Name: domain.ResourceName("h-unhealthy"),
+				},
+				Namespace: domain.ResourceNamespace("ns-2"),
+			},
+		},
+		Spec: domain.HostSpec{
+			Healthy: false,
+		},
+	}
+
+	pgObj, err := HostHealthSyncer.toPgConv(input)
+	require.NoError(t, err)
+	args := HostHealthSyncer.syncArgs(pgObj)
+
+	require.Len(t, args, 4)
+	require.Equal(t, false, args[3])
+}
+
 func Test_NetworkSyncer_DelArgs_PassesOnlyIdentity(t *testing.T) {
 	input := domain.Network{
 		Metadata: domain.ResMetadata{

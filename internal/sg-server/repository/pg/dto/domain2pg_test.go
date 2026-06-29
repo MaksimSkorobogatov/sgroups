@@ -880,6 +880,7 @@ func (s *domain2PgTestSuite) Test_Host() {
 						PlatformVersion: "24.04",
 						KernelVersion:   "6.8",
 					},
+					Healthy: true,
 				},
 				Refs: []domain.ResourceRef{
 					{
@@ -918,6 +919,7 @@ func (s *domain2PgTestSuite) Test_Host() {
 					PlatformVersion: "24.04",
 					KernelVersion:   "6.8",
 				},
+				Healthy: true,
 				Refs: []pg.ResourceRef{
 					{Name: "ag-1", Namespace: "ns-a", ResType: pg.ResourceType(domain.AddressGroupResource.String())},
 					{Name: "ns-2", Namespace: "", ResType: pg.ResourceType(domain.NamespaceResource.String())},

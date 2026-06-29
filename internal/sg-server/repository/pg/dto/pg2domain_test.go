@@ -408,6 +408,7 @@ func (s *pg2DomainTestSuite) Test_Host() {
 		},
 		IPs:               []netip.Addr{ip4, ip6},
 		MetaInfo:          pg.HostInfo{HostName: "node-1", OS: "linux", Platform: "ubuntu", PlatformFamily: "debian", PlatformVersion: "24.04", KernelVersion: "6.8"},
+		Healthy:           true,
 		Refs:              []pg.ResourceRef{{Name: "ag-1", Namespace: "ns-a", ResType: pg.ResourceType(domain.AddressGroupResource.String())}, {Name: "ns-2", Namespace: "", ResType: pg.ResourceType(domain.NamespaceResource.String())}},
 		CreationTimestamp: ts,
 		ResourceVersion:   "9",
@@ -431,6 +432,7 @@ func (s *pg2DomainTestSuite) Test_Host() {
 	s.Equal("9", got.Metadata.ResourceVersion)
 
 	s.Equal(domain.HostInfo{HostName: "node-1", OS: "linux", Platform: "ubuntu", PlatformFamily: "debian", PlatformVersion: "24.04", KernelVersion: "6.8"}, got.Spec.MetaInfo)
+	s.True(got.Spec.Healthy)
 
 	s.Require().Len(got.Refs, 2)
 	s.Equal(domain.ResourceName("ag-1"), got.Refs[0].Name)
