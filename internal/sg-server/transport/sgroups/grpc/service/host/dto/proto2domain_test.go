@@ -22,7 +22,7 @@ func Test_UpdHealthStatus_Proto2Domain_HealthyTrue(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: &pb.HostReq_UpdHealthStatus_Host_Spec{
-					Healthy: true,
+					Healthy: pb.Healthy_HEALTHY_TRUE,
 				},
 			},
 		},
@@ -50,7 +50,32 @@ func Test_UpdHealthStatus_Proto2Domain_HealthyFalse(t *testing.T) {
 					Namespace: "ns-2",
 				},
 				Spec: &pb.HostReq_UpdHealthStatus_Host_Spec{
-					Healthy: false,
+					Healthy: pb.Healthy_HEALTHY_FALSE,
+				},
+			},
+		},
+	}
+
+	var got domain.Hosts
+	err := Proto2Domain(DTO(src, &got))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.False(t, got[0].Spec.Healthy)
+}
+
+func Test_UpdHealthStatus_Proto2Domain_HealthyUndefined(t *testing.T) {
+	uid := uuid.MustParse("bbbb2222-2222-2222-2222-222222222222")
+
+	src := &pb.HostReq_UpdHealthStatus{
+		Hosts: []*pb.HostReq_UpdHealthStatus_Host{
+			{
+				Metadata: &common.MetadataScope{
+					Uid:       uid.String(),
+					Name:      "h-unknown",
+					Namespace: "ns-2",
+				},
+				Spec: &pb.HostReq_UpdHealthStatus_Host_Spec{
+					Healthy: pb.Healthy_HEALTHY_UNDEFINED,
 				},
 			},
 		},
@@ -71,11 +96,11 @@ func Test_UpdHealthStatus_Proto2Domain_Multiple(t *testing.T) {
 		Hosts: []*pb.HostReq_UpdHealthStatus_Host{
 			{
 				Metadata: &common.MetadataScope{Uid: uid1.String(), Name: "h-1", Namespace: "ns"},
-				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: true},
+				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: pb.Healthy_HEALTHY_TRUE},
 			},
 			{
 				Metadata: &common.MetadataScope{Uid: uid2.String(), Name: "h-2", Namespace: "ns"},
-				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: false},
+				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: pb.Healthy_HEALTHY_FALSE},
 			},
 		},
 	}
@@ -104,7 +129,7 @@ func Test_UpdHealthStatus_Proto2Domain_SetsOnlyHealthy(t *testing.T) {
 		Hosts: []*pb.HostReq_UpdHealthStatus_Host{
 			{
 				Metadata: &common.MetadataScope{Uid: uid.String(), Name: "h-1", Namespace: "ns"},
-				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: true},
+				Spec:     &pb.HostReq_UpdHealthStatus_Host_Spec{Healthy: pb.Healthy_HEALTHY_TRUE},
 			},
 		},
 	}
@@ -122,7 +147,7 @@ func Test_UpdHealthStatus_Proto2Domain_SetsOnlyHealthy(t *testing.T) {
 func Test_SpecToDomain_DoesNotReadHealthy(t *testing.T) {
 	src := &pb.Host_Spec{
 		DisplayName: "host-1",
-		Healthy:     true,
+		Healthy:     pb.Healthy_HEALTHY_TRUE,
 	}
 
 	var got domain.HostSpec

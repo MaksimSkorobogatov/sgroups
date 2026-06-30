@@ -56,6 +56,23 @@ func hostPortToProto(src domain.NamedPort) (dest *pb.Host_Spec_Endpoints_Port, e
 	}, nil
 }
 
+// healthyBoolToProto converts the boolean health value stored in the DB/domain
+// to the proto Healthy enum. A boolean can only represent the TRUE/FALSE states;
+// HEALTHY_UNDEFINED is never produced here because the DB column is NOT NULL.
+func healthyBoolToProto(b bool) pb.Healthy {
+	if b {
+		return pb.Healthy_HEALTHY_TRUE
+	}
+	return pb.Healthy_HEALTHY_FALSE
+}
+
+// healthyProtoToBool converts the proto Healthy enum to the boolean value
+// persisted in the DB. HEALTHY_UNDEFINED (e.g. unset input) maps to false,
+// matching the DB column default.
+func healthyProtoToBool(h pb.Healthy) bool {
+	return h == pb.Healthy_HEALTHY_TRUE
+}
+
 func hostEndpointsToProto(src *domain.HostEndpoints) (dest *pb.Host_Spec_Endpoints, err error) {
 	dest = new(pb.Host_Spec_Endpoints)
 	if src == nil {
@@ -90,7 +107,7 @@ func specToProto(src domain.HostSpec) (dest *pb.Host_Spec, err error) {
 		Description: src.Description,
 		Ips:         new(common.IPs),
 	}
-	dest.Healthy = src.Healthy
+	dest.Healthy = healthyBoolToProto(src.Healthy)
 
 	for _, ip := range slices.Concat(src.IPs.IPv4.Values(), src.IPs.IPv6.Values()) {
 		if ip.Is4() {

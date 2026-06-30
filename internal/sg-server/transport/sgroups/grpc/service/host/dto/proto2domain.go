@@ -362,7 +362,7 @@ func updHealthHostToDomain(src *pb.HostReq_UpdHealthStatus_Host) (dest domain.Ho
 	defer func() {
 		err = errors.WithMessagef(err, "%T -> %T", src, dest)
 	}()
-	dest.Spec.Healthy = src.GetSpec().GetHealthy()
+	dest.Spec.Healthy = healthyProtoToBool(src.GetSpec().GetHealthy())
 	err = cdto.Proto2Domain(cdto.DTO(src.GetMetadata(), &dest.Metadata))
 	return dest, err
 }

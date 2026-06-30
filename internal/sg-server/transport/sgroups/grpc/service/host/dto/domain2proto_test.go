@@ -7,6 +7,7 @@ import (
 	domain "github.com/PRO-Robotech/sgroups/internal/shared/domains/sgroups"
 	"github.com/H-BF/corlib/pkg/dict"
 	"github.com/google/uuid"
+	pb "github.com/PRO-Robotech/sgroups-proto/pkg/api/sgroups/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,7 @@ func Test_UpdHealthStatus_Domain2Proto_HealthyTrue(t *testing.T) {
 	dest, err := updHealthToProto(src)
 	require.NoError(t, err)
 	require.Len(t, dest.Hosts, 1)
-	require.True(t, dest.Hosts[0].GetSpec().GetHealthy())
+	require.Equal(t, pb.Healthy_HEALTHY_TRUE, dest.Hosts[0].GetSpec().GetHealthy())
 	require.Equal(t, uid.String(), dest.Hosts[0].GetMetadata().GetUid())
 	require.Equal(t, "h-health", dest.Hosts[0].GetMetadata().GetName())
 }
@@ -59,7 +60,7 @@ func Test_UpdHealthStatus_Domain2Proto_HealthyFalse(t *testing.T) {
 	dest, err := updHealthToProto(src)
 	require.NoError(t, err)
 	require.Len(t, dest.Hosts, 1)
-	require.False(t, dest.Hosts[0].GetSpec().GetHealthy())
+	require.Equal(t, pb.Healthy_HEALTHY_FALSE, dest.Hosts[0].GetSpec().GetHealthy())
 }
 
 func Test_UpdHealthStatus_Domain2Proto_Empty(t *testing.T) {
@@ -79,5 +80,5 @@ func Test_SpecToProto_IncludesHealthy(t *testing.T) {
 
 	dest, err := specToProto(src)
 	require.NoError(t, err)
-	require.True(t, dest.GetHealthy())
+	require.Equal(t, pb.Healthy_HEALTHY_TRUE, dest.GetHealthy())
 }
